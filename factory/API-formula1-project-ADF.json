@@ -1,0 +1,9 @@
+{
+	"name": "API-formula1-project-ADF",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "4599d9f2-21c9-4cc2-99b7-a44eaaa9df9e",
+		"tenantId": "7d8b4111-5786-465c-b60c-82d727c48386"
+	}
+}
