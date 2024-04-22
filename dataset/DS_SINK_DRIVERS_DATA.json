@@ -1,0 +1,30 @@
+{
+	"name": "DS_SINK_DRIVERS_DATA",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_AzureDataLakeStorageGen2",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "all_source_and_sink_dataset"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "Drivers.json",
+				"folderPath": {
+					"value": "@concat('Drivers/',formatDateTime(utcnow(),'yyyyMMdd'))",
+					"type": "Expression"
+				},
+				"fileSystem": "bronze"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "",
+			"firstRowAsHeader": false,
+			"quoteChar": ""
+		},
+		"schema": []
+	}
+}

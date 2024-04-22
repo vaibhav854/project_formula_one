@@ -1,0 +1,209 @@
+{
+	"name": "PL_INGEST_RESULTS_DATA",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_Web1",
+				"description": "This activity will get races data from API to iterate season and round wise to get Results data",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@concat('http://ergast.com/api/f1/',pipeline().parameters.year_from_races_pl,'.json')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "act_ForEach_roundwise_iteration",
+				"description": "This activity will iterate through each round of particular season",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_Web1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_Web1').output.MRData.RaceTable.Races",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "act_Web2",
+							"description": "This activity will get data from races results API",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "GET",
+								"url": {
+									"value": "@concat('http://ergast.com/api/f1/',pipeline().parameters.year_from_races_pl,'/',item().round,'/results.json')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "act_Set_Races_Results_data_variable",
+							"description": "This activity will save races Results data into races_results_data variable which is taken from API",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "act_Web2",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "race_results_data",
+								"value": {
+									"value": "@{activity('act_Web2').output.MRData.RaceTable.Races}",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "act_Copy_races_results_data",
+							"description": "This activity will copy races results data to bronze container in JSON file format",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "act_Set_Races_Results_data_variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"additionalColumns": [
+										{
+											"name": "my_column",
+											"value": {
+												"value": "@variables('race_results_data')",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "my_column",
+												"type": "String"
+											},
+											"sink": {
+												"type": "String",
+												"physicalType": "String",
+												"ordinal": 1
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_SOURCE_TEMP_TXT_DATA",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_SINK_RACES_RESULTS_DATA",
+									"type": "DatasetReference",
+									"parameters": {
+										"season": {
+											"value": "@pipeline().parameters.year_from_races_pl",
+											"type": "Expression"
+										},
+										"Round": {
+											"value": "@item().round",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"year_from_races_pl": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"race_results_data": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "API_Ingestion_Pipelines"
+		},
+		"annotations": []
+	}
+}
